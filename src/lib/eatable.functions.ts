@@ -122,7 +122,7 @@ export const saveSettings = createServerFn({ method: "POST" })
       quiz_enabled: data.quiz_enabled,
     };
     if (data.new_password && data.new_password.length >= 4) {
-      patch.owner_password_hash = hashPw(data.new_password);
+      patch.owner_password_hash = await hashPw(data.new_password);
     }
     const { error } = await supa.from("settings").update(patch).eq("id", 1);
     if (error) throw error;
