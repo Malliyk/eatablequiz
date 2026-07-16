@@ -15,7 +15,7 @@ async function verifyPassword(password: string): Promise<boolean> {
   const supa = await admin();
   const { data } = await supa.from("settings").select("owner_password_hash").eq("id", 1).maybeSingle();
   if (!data) return false;
-  return data.owner_password_hash === hashPw(password);
+  return data.owner_password_hash === (await hashPw(password));
 }
 
 // ---------- Public reads ----------
