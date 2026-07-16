@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   deleteMode, getOwnerData, saveSettings, upsertMode, uploadQuestions, verifyOwner,
 } from "@/lib/eatable.functions";
