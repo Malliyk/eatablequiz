@@ -84,6 +84,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:description", content: "Scan, play the EATABLE quiz, and win a treat from our street food cart." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "EATABLE — Play & Win" },
+      { name: "twitter:description", content: "Scan, play the EATABLE quiz, and win a treat from our street food cart." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/06fc6e17-bd96-41f0-b746-fd453579640c/id-preview-74491346--ab062daf-ac4a-4d4a-9f56-c575a8332313.lovable.app-1784261096423.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/06fc6e17-bd96-41f0-b746-fd453579640c/id-preview-74491346--ab062daf-ac4a-4d4a-9f56-c575a8332313.lovable.app-1784261096423.png" },
     ],
     links: [
       {
