@@ -114,18 +114,12 @@ function SettingsTab({ password, settings, onSaved }: { password: string; settin
     item_price: settings.item_price ?? "",
     reward_text: settings.reward_text ?? "",
     quiz_enabled: !!settings.quiz_enabled,
-    new_password: "",
   });
   const save = useMutation({
     mutationFn: () => saveSettings({ data: { password, ...form } }),
-    onSuccess: (res) => {
-      alert(res.passwordChanged ? "Saved. Password changed — please log in again." : "Saved.");
-      if (res.passwordChanged) {
-        sessionStorage.removeItem(PW_KEY);
-        window.location.reload();
-      } else {
-        onSaved();
-      }
+    onSuccess: () => {
+      alert("Saved.");
+      onSaved();
     },
     onError: (e: any) => alert(e?.message || "Save failed"),
   });
@@ -140,13 +134,63 @@ function SettingsTab({ password, settings, onSaved }: { password: string; settin
         <input type="checkbox" checked={form.quiz_enabled} onChange={(e) => setForm({ ...form, quiz_enabled: e.target.checked })} className="h-5 w-5" />
         <span className="font-semibold">Quiz Enabled</span>
       </label>
-      <Field label="Change Password (optional)" value={form.new_password} onChange={(v) => setForm({ ...form, new_password: v })} type="password" placeholder="Leave blank to keep" />
       <button onClick={() => save.mutate()} disabled={save.isPending} className="w-full rounded-2xl bg-primary text-primary-foreground font-bold py-4">
         {save.isPending ? "Saving…" : "Save Settings"}
+      </button>
+
+      <ChangePasswordCard password={password} settings={settings} />
+    </div>
+  );
+}
+
+function ChangePasswordCard({ password, settings }: { password: string; settings: any }) {
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
+
+  const change = useMutation({
+    mutationFn: async () => {
+      if (current !== password) throw new Error("Current password is incorrect");
+      if (next.length < 4) throw new Error("New password must be at least 4 characters");
+      if (next !== confirmPw) throw new Error("New passwords do not match");
+      return saveSettings({
+        data: {
+          password: current,
+          business_name: settings.business_name ?? "",
+          item_name: settings.item_name ?? "",
+          item_price: settings.item_price ?? "",
+          reward_text: settings.reward_text ?? "",
+          quiz_enabled: !!settings.quiz_enabled,
+          new_password: next,
+        },
+      });
+    },
+    onSuccess: () => {
+      alert("Password changed. Please log in again.");
+      sessionStorage.removeItem(PW_KEY);
+      window.location.reload();
+    },
+    onError: (e: any) => alert(e?.message || "Failed to change password"),
+  });
+
+  return (
+    <div className="rounded-2xl bg-card border p-4 space-y-3 mt-6">
+      <div className="font-bold text-lg">🔒 Change Password</div>
+      <div className="text-xs text-muted-foreground">Update your owner console password anytime.</div>
+      <Field label="Current Password" value={current} onChange={setCurrent} type="password" placeholder="Enter current password" />
+      <Field label="New Password" value={next} onChange={setNext} type="password" placeholder="At least 4 characters" />
+      <Field label="Confirm New Password" value={confirmPw} onChange={setConfirmPw} type="password" placeholder="Re-enter new password" />
+      <button
+        onClick={() => change.mutate()}
+        disabled={!current || !next || !confirmPw || change.isPending}
+        className="w-full rounded-2xl bg-primary text-primary-foreground font-bold py-4 disabled:opacity-60"
+      >
+        {change.isPending ? "Updating…" : "Update Password"}
       </button>
     </div>
   );
 }
+
 
 function ModesTab({ password, modes, onChanged }: { password: string; modes: any[]; onChanged: () => void }) {
   const [editing, setEditing] = useState<any | null>(null);
