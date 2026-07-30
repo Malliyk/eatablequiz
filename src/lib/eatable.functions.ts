@@ -182,6 +182,7 @@ export const saveSettings = createServerFn({ method: "POST" })
       item_price: data.item_price,
       reward_text: data.reward_text,
       quiz_enabled: data.quiz_enabled,
+      retake_cooldown_minutes: data.retake_cooldown_minutes,
     };
     if (data.new_password && data.new_password.length >= 4) {
       patch.owner_password_hash = await hashPw(data.new_password);
