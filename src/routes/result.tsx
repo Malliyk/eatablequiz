@@ -15,14 +15,28 @@ function ResultPage() {
 
   if (!session) return null;
 
-  let correct = 0;
-  session.questions.forEach((q, i) => {
-    if (session.answers[i] === q.correct_answer) correct++;
-  });
-  const wrong = session.questions.length - correct;
-  const pct = Math.round((correct / session.questions.length) * 100);
-  const won = correct >= session.mode.correct_to_win;
+  const result = session.result;
+  if (!result) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center gap-4">
+        <div className="text-lg font-bold">We couldn't score this quiz.</div>
+        <p className="text-sm text-muted-foreground">Please check your connection and play again.</p>
+        <button
+          onClick={() => { clearSession(); nav({ to: "/" }); }}
+          className="rounded-2xl bg-primary text-primary-foreground font-bold px-6 py-3"
+        >
+          Start Over
+        </button>
+      </div>
+    );
+  }
+
+  const correct = result.correct;
+  const wrong = result.wrong;
+  const pct = result.total ? Math.round((correct / result.total) * 100) : 0;
+  const won = result.won;
   const timeTaken = Math.round(((session.submittedAt ?? Date.now()) - session.startedAt) / 1000);
+
 
   return (
     <div className="min-h-screen flex flex-col px-5 pt-6 pb-8">
