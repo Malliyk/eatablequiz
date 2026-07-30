@@ -7,7 +7,6 @@ export type QuizQuestion = {
   option_b_en: string; option_b_kn: string | null;
   option_c_en: string; option_c_kn: string | null;
   option_d_en: string; option_d_kn: string | null;
-  correct_answer: string;
   difficulty: string;
   subject: string | null;
 };
@@ -16,6 +15,15 @@ export type PlayerMode = {
   easy_count: number; moderate_count: number; difficult_count: number;
   time_limit_seconds: number; correct_to_win: number; reward_text: string;
 };
+// Grading result returned by the server after submission.
+export type QuizResult = {
+  correct: number;
+  total: number;
+  wrong: number;
+  won: boolean;
+  reward_text: string;
+  results: { id: string; chosen: string | null; correct_answer: string | null; isCorrect: boolean }[];
+};
 export type QuizSession = {
   teamName: string;
   mode: PlayerMode;
@@ -23,7 +31,9 @@ export type QuizSession = {
   answers: (string | null)[]; // 'A'|'B'|'C'|'D'|null
   startedAt: number;
   submittedAt?: number;
+  result?: QuizResult;
 };
+
 
 const KEY = "eatable-session";
 export function saveSession(s: QuizSession) {

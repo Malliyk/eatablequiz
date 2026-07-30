@@ -1,6 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { loadSession, saveSession } from "@/lib/eatable-session";
+import { submitQuiz } from "@/lib/eatable.functions";
+
 
 export const Route = createFileRoute("/quiz")({
   component: QuizPage,
@@ -55,13 +57,31 @@ function QuizPage() {
   };
 
   const submit = () => submitWith(session);
-  const submitWith = (s: typeof session) => {
-    if (!s) return;
+  const submittedRef = useRef(false);
+  const submitWith = async (s: typeof session) => {
+    if (!s || submittedRef.current) return;
+    submittedRef.current = true;
     if (tickRef.current) window.clearInterval(tickRef.current);
     const finished = { ...s, submittedAt: Date.now() };
+    try {
+      // Grading happens on the server; the device never holds the answer key.
+      const result = await submitQuiz({
+        data: {
+          modeId: s.mode.id,
+          answers: s.questions.map((q, i) => ({
+            id: q.id,
+            answer: (s.answers[i] as "A" | "B" | "C" | "D" | null) ?? null,
+          })),
+        },
+      });
+      finished.result = result;
+    } catch {
+      // fall through with no result; result page will show a friendly message
+    }
     saveSession(finished);
     nav({ to: "/result" });
   };
+
 
   const percent = Math.round(((index) / session.questions.length) * 100);
   const lowTime = timeLeft <= 10;

@@ -29,6 +29,12 @@ export const getPublicConfig = createServerFn({ method: "GET" }).handler(async (
   return { settings, modes: modes ?? [] };
 });
 
+// Public question columns — correct_answer is deliberately excluded so the
+// answer key never reaches the player's device. Grading happens server-side.
+const PUBLIC_QUESTION_COLUMNS =
+  "id,question_en,question_kn,option_a_en,option_a_kn,option_b_en,option_b_kn,option_c_en,option_c_kn,option_d_en,option_d_kn,difficulty,subject";
+
+
 export const getQuizQuestions = createServerFn({ method: "POST" })
   .inputValidator((d: { modeId: string }) => z.object({ modeId: z.string().uuid() }).parse(d))
   .handler(async ({ data }) => {
@@ -40,7 +46,7 @@ export const getQuizQuestions = createServerFn({ method: "POST" })
       if (n <= 0) return [];
       const { data } = await supa
         .from("questions")
-        .select("id,question_en,question_kn,option_a_en,option_a_kn,option_b_en,option_b_kn,option_c_en,option_c_kn,option_d_en,option_d_kn,correct_answer,difficulty,subject")
+        .select(PUBLIC_QUESTION_COLUMNS)
         .eq("active", true)
         .eq("difficulty", difficulty);
       const arr = (data ?? []).slice();
@@ -62,7 +68,7 @@ export const getQuizQuestions = createServerFn({ method: "POST" })
     if (questions.length < mode.num_questions) {
       const { data } = await supa
         .from("questions")
-        .select("id,question_en,question_kn,option_a_en,option_a_kn,option_b_en,option_b_kn,option_c_en,option_c_kn,option_d_en,option_d_kn,correct_answer,difficulty,subject")
+        .select(PUBLIC_QUESTION_COLUMNS)
         .eq("active", true)
         .limit(mode.num_questions * 3);
       const seen = new Set(questions.map((q) => q.id));
@@ -79,6 +85,61 @@ export const getQuizQuestions = createServerFn({ method: "POST" })
     questions = questions.slice(0, mode.num_questions);
     return { mode, questions };
   });
+
+// Grades the quiz server-side. The browser only ever learns the outcome,
+// and only after it has submitted its answers.
+export const submitQuiz = createServerFn({ method: "POST" })
+  .inputValidator((d: { modeId: string; answers: { id: string; answer: string | null }[] }) =>
+    z
+      .object({
+        modeId: z.string().uuid(),
+        answers: z
+          .array(
+            z.object({
+              id: z.string().uuid(),
+              answer: z.enum(["A", "B", "C", "D"]).nullable(),
+            }),
+          )
+          .max(200),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const supa = await admin();
+    const { data: mode } = await supa
+      .from("player_modes")
+      .select("correct_to_win,reward_text,num_questions")
+      .eq("id", data.modeId)
+      .maybeSingle();
+    if (!mode) throw new Error("Mode not found");
+
+    const ids = data.answers.map((a) => a.id);
+    const { data: rows } = await supa
+      .from("questions")
+      .select("id,correct_answer")
+      .in("id", ids);
+    const keyById = new Map((rows ?? []).map((r) => [r.id, r.correct_answer]));
+
+    let correct = 0;
+    const results = data.answers.map((a) => {
+      const correctAnswer = keyById.get(a.id) ?? null;
+      const isCorrect = !!correctAnswer && a.answer === correctAnswer;
+      if (isCorrect) correct++;
+      return { id: a.id, chosen: a.answer, correct_answer: correctAnswer, isCorrect };
+    });
+
+    const total = data.answers.length;
+    return {
+      correct,
+      total,
+      wrong: total - correct,
+      won: correct >= mode.correct_to_win,
+      reward_text: mode.reward_text,
+      results,
+    };
+  });
+
+
 
 // ---------- Owner writes ----------
 
