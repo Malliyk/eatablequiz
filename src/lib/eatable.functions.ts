@@ -169,6 +169,7 @@ export const saveSettings = createServerFn({ method: "POST" })
       item_price: z.string(),
       reward_text: z.string(),
       quiz_enabled: z.boolean(),
+      retake_cooldown_minutes: z.number().int().min(0).max(1440).default(30),
       new_password: z.string().optional(),
     }).parse(d),
   )
