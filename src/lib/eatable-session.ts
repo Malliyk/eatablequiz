@@ -62,3 +62,27 @@ export function loadTeam(): string {
   if (typeof window === "undefined") return "";
   return sessionStorage.getItem(TEAM_KEY) || "";
 }
+
+const LANG_KEY = "eatable-lang";
+export function saveLang(lang: QuizLang) {
+  if (typeof window === "undefined") return;
+  sessionStorage.setItem(LANG_KEY, lang);
+}
+export function loadLang(): QuizLang {
+  if (typeof window === "undefined") return "en";
+  const v = sessionStorage.getItem(LANG_KEY);
+  return v === "kn" ? "kn" : "en";
+}
+
+// Retake cooldown — remembered per device so the same player has to wait.
+const LAST_PLAYED_KEY = "eatable-last-played";
+export function markPlayed() {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(LAST_PLAYED_KEY, String(Date.now()));
+}
+export function lastPlayedAt(): number | null {
+  if (typeof window === "undefined") return null;
+  const v = localStorage.getItem(LAST_PLAYED_KEY);
+  const n = v ? Number(v) : NaN;
+  return Number.isFinite(n) ? n : null;
+}
