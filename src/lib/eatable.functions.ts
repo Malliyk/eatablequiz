@@ -29,6 +29,15 @@ export const getPublicConfig = createServerFn({ method: "GET" }).handler(async (
   return { settings, modes: modes ?? [] };
 });
 
+const QUESTION_COLUMNS =
+  "id,question_en,question_kn,option_a_en,option_a_kn,option_b_en,option_b_kn,option_c_en,option_c_kn,option_d_en,option_d_kn,correct_answer,difficulty,subject";
+
+// Never send correct_answer to the browser.
+function stripAnswer<T extends { correct_answer?: unknown }>(q: T) {
+  const { correct_answer: _omit, ...rest } = q;
+  return rest;
+}
+
 export const getQuizQuestions = createServerFn({ method: "POST" })
   .inputValidator((d: { modeId: string }) => z.object({ modeId: z.string().uuid() }).parse(d))
   .handler(async ({ data }) => {
