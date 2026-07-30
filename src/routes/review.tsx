@@ -22,6 +22,8 @@ function ReviewPage() {
       <div className="mt-5 space-y-4">
         {session.questions.map((q, i) => {
           const chosen = session.answers[i];
+          // Correct answers come from the server's graded result only.
+          const correctAnswer = session.result?.results.find((r) => r.id === q.id)?.correct_answer ?? null;
           return (
             <div key={q.id} className="rounded-3xl bg-card border-2 p-4 shadow-sm">
               <div className="text-xs text-muted-foreground">Question {i + 1}</div>
@@ -30,7 +32,7 @@ function ReviewPage() {
               <div className="mt-3 space-y-2">
                 {(["A", "B", "C", "D"] as const).map((letter) => {
                   const en = (q as any)[`option_${letter.toLowerCase()}_en`];
-                  const isCorrect = q.correct_answer === letter;
+                  const isCorrect = correctAnswer === letter;
                   const isChosen = chosen === letter;
                   const wrongPick = isChosen && !isCorrect;
                   const border = isCorrect
