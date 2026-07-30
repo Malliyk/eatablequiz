@@ -51,7 +51,7 @@ function ResultPage() {
       <div className="mt-5 grid grid-cols-2 gap-3">
         <Stat label="Correct" value={String(correct)} tone="success" />
         <Stat label="Wrong" value={String(wrong)} tone="destructive" />
-        <Stat label="Score" value={`${correct}/${session.questions.length}`} />
+        <Stat label="Score" value={`${correct}/${result.total}`} />
         <Stat label="Percentage" value={`${pct}%`} />
         <Stat label="Time Taken" value={`${timeTaken}s`} />
         <Stat label="Status" value={won ? "Winner" : "Try Again"} tone={won ? "success" : undefined} />
