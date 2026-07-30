@@ -68,7 +68,7 @@ export const getQuizQuestions = createServerFn({ method: "POST" })
     if (questions.length < mode.num_questions) {
       const { data } = await supa
         .from("questions")
-        .select("id,question_en,question_kn,option_a_en,option_a_kn,option_b_en,option_b_kn,option_c_en,option_c_kn,option_d_en,option_d_kn,correct_answer,difficulty,subject")
+        .select(PUBLIC_QUESTION_COLUMNS)
         .eq("active", true)
         .limit(mode.num_questions * 3);
       const seen = new Set(questions.map((q) => q.id));
