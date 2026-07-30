@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { loadSession, saveSession } from "@/lib/eatable-session";
+import { loadSession, markPlayed, saveSession } from "@/lib/eatable-session";
 import { submitQuiz } from "@/lib/eatable.functions";
 
 
