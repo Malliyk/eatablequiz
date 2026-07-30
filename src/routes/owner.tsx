@@ -174,6 +174,7 @@ function ChangePasswordCard({ password, settings }: { password: string; settings
           item_price: settings.item_price ?? "",
           reward_text: settings.reward_text ?? "",
           quiz_enabled: !!settings.quiz_enabled,
+          retake_cooldown_minutes: Number(settings.retake_cooldown_minutes ?? 30),
           new_password: next,
         },
       });
