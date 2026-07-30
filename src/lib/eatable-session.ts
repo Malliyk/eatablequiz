@@ -24,8 +24,10 @@ export type QuizResult = {
   reward_text: string;
   results: { id: string; chosen: string | null; correct_answer: string | null; isCorrect: boolean }[];
 };
+export type QuizLang = "en" | "kn";
 export type QuizSession = {
   teamName: string;
+  lang: QuizLang;
   mode: PlayerMode;
   questions: QuizQuestion[];
   answers: (string | null)[]; // 'A'|'B'|'C'|'D'|null
