@@ -130,6 +130,7 @@ export type Database = {
           item_price: string
           owner_password_hash: string
           quiz_enabled: boolean
+          retake_cooldown_minutes: number
           reward_text: string
         }
         Insert: {
@@ -139,6 +140,7 @@ export type Database = {
           item_price?: string
           owner_password_hash?: string
           quiz_enabled?: boolean
+          retake_cooldown_minutes?: number
           reward_text?: string
         }
         Update: {
@@ -148,6 +150,7 @@ export type Database = {
           item_price?: string
           owner_password_hash?: string
           quiz_enabled?: boolean
+          retake_cooldown_minutes?: number
           reward_text?: string
         }
         Relationships: []

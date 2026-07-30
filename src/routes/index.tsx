@@ -1,28 +1,57 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { getPublicConfig } from "@/lib/eatable.functions";
-import { saveTeam, loadTeam } from "@/lib/eatable-session";
+import { saveTeam, loadTeam, saveLang, loadLang, lastPlayedAt, type QuizLang } from "@/lib/eatable-session";
 
 export const Route = createFileRoute("/")({
   component: RegisterPage,
+  head: () => ({
+    meta: [
+      { title: "EATABLE Quiz — Play & Win a Free Treat" },
+      { name: "description", content: "Play a quick bilingual quiz on your phone at the EATABLE cart and win a free treat." },
+      { property: "og:title", content: "EATABLE Quiz — Play & Win a Free Treat" },
+      { property: "og:description", content: "Play a quick bilingual quiz on your phone and win a free treat." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
 });
 
 function RegisterPage() {
   const nav = useNavigate();
   const [team, setTeam] = useState(loadTeam());
+  const [lang, setLang] = useState<QuizLang | null>(null);
   const [pressStart, setPressStart] = useState<number | null>(null);
+  const [now, setNow] = useState(Date.now());
   const { data } = useQuery({
     queryKey: ["public-config"],
     queryFn: () => getPublicConfig(),
   });
   const business = data?.settings?.business_name ?? "EATABLE";
   const quizEnabled = data?.settings?.quiz_enabled ?? true;
+  const cooldownMin = (data?.settings as any)?.retake_cooldown_minutes ?? 0;
+
+  useEffect(() => {
+    setLang(loadLang());
+    const t = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(t);
+  }, []);
+
+  const last = typeof window !== "undefined" ? lastPlayedAt() : null;
+  const waitMs = last && cooldownMin > 0 ? last + cooldownMin * 60000 - now : 0;
+  const locked = waitMs > 0;
+  const waitLabel = (() => {
+    const s = Math.ceil(waitMs / 1000);
+    const m = Math.floor(s / 60);
+    return m > 0 ? `${m} min ${s % 60}s` : `${s}s`;
+  })();
 
   const onContinue = () => {
     const t = team.trim();
-    if (!t) return;
+    if (!t || !lang || locked) return;
     saveTeam(t);
+    saveLang(lang);
     nav({ to: "/modes" });
   };
 
@@ -62,20 +91,47 @@ function RegisterPage() {
           </div>
         ) : (
           <div className="mt-8 w-full max-w-md space-y-4">
+            {locked && (
+              <div className="rounded-2xl bg-secondary text-secondary-foreground p-4 text-sm">
+                <div className="font-bold">You have already played</div>
+                <div className="mt-1">Please wait {waitLabel} before playing again.</div>
+              </div>
+            )}
             <label className="block text-left text-sm font-semibold">Team Name</label>
             <input
               value={team}
               onChange={(e) => setTeam(e.target.value)}
               placeholder="Enter your team name"
               className="w-full rounded-2xl border-2 border-input bg-card px-5 py-4 text-lg outline-none focus:border-primary"
-              autoFocus
             />
+
+            <div className="text-left">
+              <div className="text-sm font-semibold mb-2">Choose Quiz Language / ಭಾಷೆ ಆಯ್ಕೆ ಮಾಡಿ</div>
+              <div className="grid grid-cols-2 gap-3">
+                {([
+                  { id: "en" as const, title: "English", sub: "Play in English" },
+                  { id: "kn" as const, title: "ಕನ್ನಡ", sub: "ಕನ್ನಡದಲ್ಲಿ ಆಡಿ" },
+                ]).map((o) => (
+                  <button
+                    key={o.id}
+                    onClick={() => setLang(o.id)}
+                    className={`rounded-2xl border-2 p-4 text-left transition ${
+                      lang === o.id ? "border-primary bg-primary/10" : "border-border bg-card"
+                    }`}
+                  >
+                    <div className="font-bold">{o.title}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">{o.sub}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <button
               onClick={onContinue}
-              disabled={!team.trim()}
+              disabled={!team.trim() || !lang || locked}
               className="w-full rounded-2xl bg-primary text-primary-foreground font-bold text-lg py-4 shadow-md active:scale-[.98] transition disabled:opacity-50"
             >
-              Continue
+              {lang === "kn" ? "ಮುಂದುವರಿಸಿ" : "Continue"}
             </button>
           </div>
         )}

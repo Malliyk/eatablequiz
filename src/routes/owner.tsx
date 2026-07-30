@@ -114,6 +114,7 @@ function SettingsTab({ password, settings, onSaved }: { password: string; settin
     item_price: settings.item_price ?? "",
     reward_text: settings.reward_text ?? "",
     quiz_enabled: !!settings.quiz_enabled,
+    retake_cooldown_minutes: Number(settings.retake_cooldown_minutes ?? 30),
   });
   const save = useMutation({
     mutationFn: () => saveSettings({ data: { password, ...form } }),
@@ -130,6 +131,18 @@ function SettingsTab({ password, settings, onSaved }: { password: string; settin
       <Field label="Item Name" value={form.item_name} onChange={(v) => setForm({ ...form, item_name: v })} />
       <Field label="Item Price" value={form.item_price} onChange={(v) => setForm({ ...form, item_price: v })} />
       <Field label="Default Reward Text" value={form.reward_text} onChange={(v) => setForm({ ...form, reward_text: v })} />
+      <div className="rounded-2xl bg-card border p-4 space-y-2">
+        <div className="font-bold">⏳ Retake Wait Time</div>
+        <div className="text-xs text-muted-foreground">
+          How many minutes the same player must wait before taking the quiz again. Set 0 to allow unlimited retakes.
+        </div>
+        <Field
+          label="Minutes"
+          type="number"
+          value={String(form.retake_cooldown_minutes)}
+          onChange={(v) => setForm({ ...form, retake_cooldown_minutes: Math.max(0, Math.min(1440, Number(v) || 0)) })}
+        />
+      </div>
       <label className="flex items-center gap-3 p-4 rounded-2xl bg-card border">
         <input type="checkbox" checked={form.quiz_enabled} onChange={(e) => setForm({ ...form, quiz_enabled: e.target.checked })} className="h-5 w-5" />
         <span className="font-semibold">Quiz Enabled</span>
@@ -161,6 +174,7 @@ function ChangePasswordCard({ password, settings }: { password: string; settings
           item_price: settings.item_price ?? "",
           reward_text: settings.reward_text ?? "",
           quiz_enabled: !!settings.quiz_enabled,
+          retake_cooldown_minutes: Number(settings.retake_cooldown_minutes ?? 30),
           new_password: next,
         },
       });

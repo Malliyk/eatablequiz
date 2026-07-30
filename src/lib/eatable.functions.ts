@@ -23,7 +23,7 @@ async function verifyPassword(password: string): Promise<boolean> {
 export const getPublicConfig = createServerFn({ method: "GET" }).handler(async () => {
   const supa = await admin();
   const [{ data: settings }, { data: modes }] = await Promise.all([
-    supa.from("settings").select("business_name,item_name,item_price,reward_text,quiz_enabled").eq("id", 1).maybeSingle(),
+    supa.from("settings").select("business_name,item_name,item_price,reward_text,quiz_enabled,retake_cooldown_minutes").eq("id", 1).maybeSingle(),
     supa.from("player_modes").select("*").eq("enabled", true).order("sort_order"),
   ]);
   return { settings, modes: modes ?? [] };
@@ -169,6 +169,7 @@ export const saveSettings = createServerFn({ method: "POST" })
       item_price: z.string(),
       reward_text: z.string(),
       quiz_enabled: z.boolean(),
+      retake_cooldown_minutes: z.number().int().min(0).max(1440).default(30),
       new_password: z.string().optional(),
     }).parse(d),
   )
@@ -181,6 +182,7 @@ export const saveSettings = createServerFn({ method: "POST" })
       item_price: data.item_price,
       reward_text: data.reward_text,
       quiz_enabled: data.quiz_enabled,
+      retake_cooldown_minutes: data.retake_cooldown_minutes,
     };
     if (data.new_password && data.new_password.length >= 4) {
       patch.owner_password_hash = await hashPw(data.new_password);

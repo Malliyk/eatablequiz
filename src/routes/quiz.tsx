@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { loadSession, saveSession } from "@/lib/eatable-session";
+import { loadSession, markPlayed, saveSession } from "@/lib/eatable-session";
 import { submitQuiz } from "@/lib/eatable.functions";
 
 
@@ -79,18 +79,21 @@ function QuizPage() {
       // fall through with no result; result page will show a friendly message
     }
     saveSession(finished);
+    markPlayed();
     nav({ to: "/result" });
   };
 
 
   const percent = Math.round(((index) / session.questions.length) * 100);
   const lowTime = timeLeft <= 10;
+  const kn = session.lang === "kn";
+  const text = (en: string | null, knText: string | null) => (kn ? (knText || en || "") : (en || ""));
 
   return (
     <div className="min-h-screen flex flex-col px-5 pt-5 pb-6">
       <div className="flex items-center justify-between">
         <div className="text-sm font-semibold">
-          Question {index + 1} / {session.questions.length}
+          {kn ? "ಪ್ರಶ್ನೆ" : "Question"} {index + 1} / {session.questions.length}
         </div>
         <div className={`px-3 py-1 rounded-full text-sm font-bold ${lowTime ? "bg-destructive text-destructive-foreground" : "bg-primary text-primary-foreground"}`}>
           ⏱ {timeLeft}s
@@ -101,14 +104,13 @@ function QuizPage() {
       </div>
 
       <div className="mt-6 rounded-3xl bg-card border p-5 shadow-sm">
-        <div className="text-lg font-semibold leading-snug">{q.question_en}</div>
-        {q.question_kn && <div className="mt-2 text-base text-muted-foreground leading-snug">{q.question_kn}</div>}
+        <div className="text-lg font-semibold leading-snug">{text(q.question_en, q.question_kn)}</div>
       </div>
 
       <div className="mt-4 space-y-3">
         {(["A", "B", "C", "D"] as const).map((letter) => {
           const en = (q as any)[`option_${letter.toLowerCase()}_en`];
-          const kn = (q as any)[`option_${letter.toLowerCase()}_kn`];
+          const knOpt = (q as any)[`option_${letter.toLowerCase()}_kn`];
           return (
             <button
               key={letter}
@@ -117,10 +119,7 @@ function QuizPage() {
             >
               <div className="flex gap-3">
                 <div className="h-9 w-9 shrink-0 rounded-full bg-secondary text-secondary-foreground font-bold flex items-center justify-center">{letter}</div>
-                <div>
-                  <div className="font-semibold">{en}</div>
-                  {kn && <div className="text-sm text-muted-foreground mt-0.5">{kn}</div>}
-                </div>
+                <div className="font-semibold">{text(en, knOpt)}</div>
               </div>
             </button>
           );
