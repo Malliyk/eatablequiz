@@ -1,0 +1,1 @@
+ALTER TABLE public.settings ADD COLUMN IF NOT EXISTS retake_cooldown_minutes integer NOT NULL DEFAULT 30;
