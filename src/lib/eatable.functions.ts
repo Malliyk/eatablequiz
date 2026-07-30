@@ -86,6 +86,61 @@ export const getQuizQuestions = createServerFn({ method: "POST" })
     return { mode, questions };
   });
 
+// Grades the quiz server-side. The browser only ever learns the outcome,
+// and only after it has submitted its answers.
+export const submitQuiz = createServerFn({ method: "POST" })
+  .inputValidator((d: { modeId: string; answers: { id: string; answer: string | null }[] }) =>
+    z
+      .object({
+        modeId: z.string().uuid(),
+        answers: z
+          .array(
+            z.object({
+              id: z.string().uuid(),
+              answer: z.enum(["A", "B", "C", "D"]).nullable(),
+            }),
+          )
+          .max(200),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const supa = await admin();
+    const { data: mode } = await supa
+      .from("player_modes")
+      .select("correct_to_win,reward_text,num_questions")
+      .eq("id", data.modeId)
+      .maybeSingle();
+    if (!mode) throw new Error("Mode not found");
+
+    const ids = data.answers.map((a) => a.id);
+    const { data: rows } = await supa
+      .from("questions")
+      .select("id,correct_answer")
+      .in("id", ids);
+    const keyById = new Map((rows ?? []).map((r) => [r.id, r.correct_answer]));
+
+    let correct = 0;
+    const results = data.answers.map((a) => {
+      const correctAnswer = keyById.get(a.id) ?? null;
+      const isCorrect = !!correctAnswer && a.answer === correctAnswer;
+      if (isCorrect) correct++;
+      return { id: a.id, chosen: a.answer, correct_answer: correctAnswer, isCorrect };
+    });
+
+    const total = data.answers.length;
+    return {
+      correct,
+      total,
+      wrong: total - correct,
+      won: correct >= mode.correct_to_win,
+      reward_text: mode.reward_text,
+      results,
+    };
+  });
+
+
+
 // ---------- Owner writes ----------
 
 export const verifyOwner = createServerFn({ method: "POST" })
