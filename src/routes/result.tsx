@@ -48,6 +48,14 @@ function ResultPage() {
         <div className="mt-1 text-sm opacity-90">Team: {session.teamName}</div>
       </div>
 
+      {session.isSample && (
+        <div className="mt-4 rounded-2xl bg-secondary text-secondary-foreground p-4 text-sm text-center">
+          {session.lang === "kn"
+            ? "ಇದು ಅಭ್ಯಾಸ ಸುತ್ತು — ಇದಕ್ಕೆ ಬಹುಮಾನ ಇಲ್ಲ. ಈಗ ನಿಜವಾದ ಕ್ವಿಜ್ ಆಡಿ!"
+            : "This was a practice round — no reward. You're ready for the real quiz!"}
+        </div>
+      )}
+
       <div className="mt-5 grid grid-cols-2 gap-3">
         <Stat label="Correct" value={String(correct)} tone="success" />
         <Stat label="Wrong" value={String(wrong)} tone="destructive" />
@@ -57,7 +65,7 @@ function ResultPage() {
         <Stat label="Status" value={won ? "Winner" : "Try Again"} tone={won ? "success" : undefined} />
       </div>
 
-      {won && (
+      {won && !session.isSample && (
         <div className="mt-5 rounded-3xl bg-primary text-primary-foreground p-6 text-center">
           <div className="text-sm uppercase tracking-wider opacity-90">Your Reward</div>
           <div className="text-2xl font-black mt-1">🎁 {session.mode.reward_text}</div>
