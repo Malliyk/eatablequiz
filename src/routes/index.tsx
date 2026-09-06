@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { getPublicConfig } from "@/lib/eatable.functions";
+import { getPublicConfig, getSampleInfo } from "@/lib/eatable.functions";
 import { saveTeam, loadTeam, saveLang, loadLang, lastPlayedAt, type QuizLang } from "@/lib/eatable-session";
 
 export const Route = createFileRoute("/")({
@@ -28,6 +28,8 @@ function RegisterPage() {
     queryKey: ["public-config"],
     queryFn: () => getPublicConfig(),
   });
+  const sample = useQuery({ queryKey: ["sample-info"], queryFn: () => getSampleInfo() });
+  const sampleReady = !!(sample.data?.config as any)?.enabled && (sample.data?.availableQuestions ?? 0) > 0;
   const business = data?.settings?.business_name ?? "EATABLE";
   const quizEnabled = data?.settings?.quiz_enabled ?? true;
   const cooldownMin = (data?.settings as any)?.retake_cooldown_minutes ?? 0;
@@ -133,6 +135,28 @@ function RegisterPage() {
             >
               {lang === "kn" ? "ಮುಂದುವರಿಸಿ" : "Continue"}
             </button>
+
+            {sampleReady && (
+              <button
+                onClick={() => {
+                  if (!lang) return;
+                  saveLang(lang);
+                  if (team.trim()) saveTeam(team.trim());
+                  nav({ to: "/sample" });
+                }}
+                disabled={!lang}
+                className="w-full rounded-2xl border-2 border-primary text-primary bg-card font-bold py-4 disabled:opacity-50"
+              >
+                {lang === "kn" ? "🧪 ಮೊದಲು ಅಭ್ಯಾಸ ಸುತ್ತು ಆಡಿ" : "🧪 Try a Sample Quiz First"}
+              </button>
+            )}
+            {sampleReady && (
+              <p className="text-xs text-muted-foreground text-center">
+                {lang === "kn"
+                  ? "ಅಭ್ಯಾಸ ಸುತ್ತಿಗೆ ಬಹುಮಾನ ಇಲ್ಲ ಮತ್ತು ಕಾಯುವ ಸಮಯ ಅನ್ವಯಿಸುವುದಿಲ್ಲ."
+                  : "The practice round has no reward and does not use up your turn."}
+              </p>
+            )}
           </div>
         )}
       </main>

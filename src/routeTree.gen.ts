@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SampleRouteImport } from './routes/sample'
 import { Route as ReviewRouteImport } from './routes/review'
 import { Route as ResultRouteImport } from './routes/result'
 import { Route as QuizRouteImport } from './routes/quiz'
@@ -17,6 +18,11 @@ import { Route as ModesRouteImport } from './routes/modes'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as InstructionsModeIdRouteImport } from './routes/instructions.$modeId'
 
+const SampleRoute = SampleRouteImport.update({
+  id: '/sample',
+  path: '/sample',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ReviewRoute = ReviewRouteImport.update({
   id: '/review',
   path: '/review',
@@ -60,6 +66,7 @@ export interface FileRoutesByFullPath {
   '/quiz': typeof QuizRoute
   '/result': typeof ResultRoute
   '/review': typeof ReviewRoute
+  '/sample': typeof SampleRoute
   '/instructions/$modeId': typeof InstructionsModeIdRoute
 }
 export interface FileRoutesByTo {
@@ -69,6 +76,7 @@ export interface FileRoutesByTo {
   '/quiz': typeof QuizRoute
   '/result': typeof ResultRoute
   '/review': typeof ReviewRoute
+  '/sample': typeof SampleRoute
   '/instructions/$modeId': typeof InstructionsModeIdRoute
 }
 export interface FileRoutesById {
@@ -79,6 +87,7 @@ export interface FileRoutesById {
   '/quiz': typeof QuizRoute
   '/result': typeof ResultRoute
   '/review': typeof ReviewRoute
+  '/sample': typeof SampleRoute
   '/instructions/$modeId': typeof InstructionsModeIdRoute
 }
 export interface FileRouteTypes {
@@ -90,6 +99,7 @@ export interface FileRouteTypes {
     | '/quiz'
     | '/result'
     | '/review'
+    | '/sample'
     | '/instructions/$modeId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -99,6 +109,7 @@ export interface FileRouteTypes {
     | '/quiz'
     | '/result'
     | '/review'
+    | '/sample'
     | '/instructions/$modeId'
   id:
     | '__root__'
@@ -108,6 +119,7 @@ export interface FileRouteTypes {
     | '/quiz'
     | '/result'
     | '/review'
+    | '/sample'
     | '/instructions/$modeId'
   fileRoutesById: FileRoutesById
 }
@@ -118,11 +130,19 @@ export interface RootRouteChildren {
   QuizRoute: typeof QuizRoute
   ResultRoute: typeof ResultRoute
   ReviewRoute: typeof ReviewRoute
+  SampleRoute: typeof SampleRoute
   InstructionsModeIdRoute: typeof InstructionsModeIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/sample': {
+      id: '/sample'
+      path: '/sample'
+      fullPath: '/sample'
+      preLoaderRoute: typeof SampleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/review': {
       id: '/review'
       path: '/review'
@@ -182,8 +202,19 @@ const rootRouteChildren: RootRouteChildren = {
   QuizRoute: QuizRoute,
   ResultRoute: ResultRoute,
   ReviewRoute: ReviewRoute,
+  SampleRoute: SampleRoute,
   InstructionsModeIdRoute: InstructionsModeIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

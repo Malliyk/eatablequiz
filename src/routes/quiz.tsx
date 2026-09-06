@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { loadSession, markPlayed, saveSession } from "@/lib/eatable-session";
-import { submitQuiz } from "@/lib/eatable.functions";
+import { submitQuiz, submitSampleQuiz } from "@/lib/eatable.functions";
 
 
 export const Route = createFileRoute("/quiz")({
@@ -65,21 +65,19 @@ function QuizPage() {
     const finished = { ...s, submittedAt: Date.now() };
     try {
       // Grading happens on the server; the device never holds the answer key.
-      const result = await submitQuiz({
-        data: {
-          modeId: s.mode.id,
-          answers: s.questions.map((q, i) => ({
-            id: q.id,
-            answer: (s.answers[i] as "A" | "B" | "C" | "D" | null) ?? null,
-          })),
-        },
-      });
+      const answers = s.questions.map((q, i) => ({
+        id: q.id,
+        answer: (s.answers[i] as "A" | "B" | "C" | "D" | null) ?? null,
+      }));
+      const result = s.isSample
+        ? await submitSampleQuiz({ data: { answers } })
+        : await submitQuiz({ data: { modeId: s.mode.id, answers } });
       finished.result = result;
     } catch {
       // fall through with no result; result page will show a friendly message
     }
     saveSession(finished);
-    markPlayed();
+    if (!finished.isSample) markPlayed();
     nav({ to: "/result" });
   };
 
