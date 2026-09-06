@@ -278,3 +278,165 @@ export const uploadQuestions = createServerFn({ method: "POST" })
     }
     return { ok: true, inserted };
   });
+
+// ---------- Sample (practice) quiz ----------
+
+const SAMPLE_PUBLIC_COLUMNS = PUBLIC_QUESTION_COLUMNS;
+
+export const getSampleInfo = createServerFn({ method: "GET" }).handler(async () => {
+  const supa = await admin();
+  const [{ data: config }, { count }] = await Promise.all([
+    supa.from("sample_config").select("*").eq("id", 1).maybeSingle(),
+    supa.from("sample_questions").select("*", { count: "exact", head: true }).eq("active", true),
+  ]);
+  return { config, availableQuestions: count ?? 0 };
+});
+
+export const startSampleQuiz = createServerFn({ method: "POST" }).handler(async () => {
+  const supa = await admin();
+  const { data: config } = await supa.from("sample_config").select("*").eq("id", 1).maybeSingle();
+  if (!config || !config.enabled) throw new Error("Sample quiz is not available");
+  const { data: rows } = await supa
+    .from("sample_questions")
+    .select(SAMPLE_PUBLIC_COLUMNS)
+    .eq("active", true)
+    .order("sort_order");
+  const questions = (rows ?? []).slice(0, config.num_questions);
+  if (questions.length === 0) throw new Error("No sample questions configured yet");
+  return {
+    mode: {
+      id: "sample",
+      players: 1,
+      num_questions: questions.length,
+      easy_count: 0,
+      moderate_count: 0,
+      difficult_count: 0,
+      time_limit_seconds: config.time_limit_seconds,
+      correct_to_win: config.correct_to_win,
+      reward_text: config.reward_text,
+    },
+    config,
+    questions,
+  };
+});
+
+export const submitSampleQuiz = createServerFn({ method: "POST" })
+  .inputValidator((d: { answers: { id: string; answer: string | null }[] }) =>
+    z
+      .object({
+        answers: z
+          .array(z.object({ id: z.string().uuid(), answer: z.enum(["A", "B", "C", "D"]).nullable() }))
+          .max(200),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const supa = await admin();
+    const { data: config } = await supa.from("sample_config").select("*").eq("id", 1).maybeSingle();
+    const { data: rows } = await supa
+      .from("sample_questions")
+      .select("id,correct_answer")
+      .in("id", data.answers.map((a) => a.id));
+    const keyById = new Map((rows ?? []).map((r) => [r.id, r.correct_answer]));
+    let correct = 0;
+    const results = data.answers.map((a) => {
+      const correctAnswer = keyById.get(a.id) ?? null;
+      const isCorrect = !!correctAnswer && a.answer === correctAnswer;
+      if (isCorrect) correct++;
+      return { id: a.id, chosen: a.answer, correct_answer: correctAnswer, isCorrect };
+    });
+    const total = data.answers.length;
+    return {
+      correct,
+      total,
+      wrong: total - correct,
+      won: correct >= (config?.correct_to_win ?? 0),
+      reward_text: config?.reward_text ?? "Practice round",
+      results,
+    };
+  });
+
+// ---------- Sample quiz owner management ----------
+
+export const getSampleOwnerData = createServerFn({ method: "POST" })
+  .inputValidator((d: { password: string }) => z.object({ password: z.string() }).parse(d))
+  .handler(async ({ data }) => {
+    if (!(await verifyPassword(data.password))) throw new Error("Unauthorized");
+    const supa = await admin();
+    const [{ data: config }, { data: questions }] = await Promise.all([
+      supa.from("sample_config").select("*").eq("id", 1).maybeSingle(),
+      supa.from("sample_questions").select("*").order("sort_order"),
+    ]);
+    return { config, questions: questions ?? [] };
+  });
+
+export const saveSampleConfig = createServerFn({ method: "POST" })
+  .inputValidator((d: any) =>
+    z.object({
+      password: z.string(),
+      enabled: z.boolean(),
+      num_questions: z.number().int().positive(),
+      time_limit_seconds: z.number().int().positive(),
+      correct_to_win: z.number().int().min(0),
+      reward_text: z.string(),
+      intro_text_en: z.string(),
+      intro_text_kn: z.string(),
+    }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    if (!(await verifyPassword(data.password))) throw new Error("Unauthorized");
+    const supa = await admin();
+    const { password, ...patch } = data;
+    const { error } = await supa.from("sample_config").update(patch).eq("id", 1);
+    if (error) throw error;
+    return { ok: true };
+  });
+
+const SampleQuestionRow = QuestionRow.extend({ sort_order: z.number().int().default(0) });
+
+export const upsertSampleQuestion = createServerFn({ method: "POST" })
+  .inputValidator((d: any) =>
+    z.object({ password: z.string(), id: z.string().uuid().optional(), row: SampleQuestionRow }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    if (!(await verifyPassword(data.password))) throw new Error("Unauthorized");
+    const supa = await admin();
+    if (data.id) {
+      const { error } = await supa.from("sample_questions").update(data.row).eq("id", data.id);
+      if (error) throw error;
+    } else {
+      const { error } = await supa.from("sample_questions").insert(data.row);
+      if (error) throw error;
+    }
+    return { ok: true };
+  });
+
+export const deleteSampleQuestion = createServerFn({ method: "POST" })
+  .inputValidator((d: any) => z.object({ password: z.string(), id: z.string().uuid() }).parse(d))
+  .handler(async ({ data }) => {
+    if (!(await verifyPassword(data.password))) throw new Error("Unauthorized");
+    const supa = await admin();
+    const { error } = await supa.from("sample_questions").delete().eq("id", data.id);
+    if (error) throw error;
+    return { ok: true };
+  });
+
+export const uploadSampleQuestions = createServerFn({ method: "POST" })
+  .inputValidator((d: any) =>
+    z.object({
+      password: z.string(),
+      mode: z.enum(["replace", "append"]),
+      rows: z.array(SampleQuestionRow),
+    }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    if (!(await verifyPassword(data.password))) throw new Error("Unauthorized");
+    const supa = await admin();
+    if (data.mode === "replace") {
+      const { error } = await supa.from("sample_questions").delete().not("id", "is", null);
+      if (error) throw error;
+    }
+    const { error, count } = await supa.from("sample_questions").insert(data.rows, { count: "exact" });
+    if (error) throw error;
+    return { ok: true, inserted: count ?? data.rows.length };
+  });
