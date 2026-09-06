@@ -32,6 +32,7 @@ export type QuizSession = {
   questions: QuizQuestion[];
   answers: (string | null)[]; // 'A'|'B'|'C'|'D'|null
   startedAt: number;
+  isSample?: boolean;
   submittedAt?: number;
   result?: QuizResult;
 };
