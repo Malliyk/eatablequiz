@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import {
   deleteMode, getOwnerData, saveSettings, upsertMode, uploadQuestions, verifyOwner,
+  getSampleOwnerData, saveSampleConfig, upsertSampleQuestion, deleteSampleQuestion, uploadSampleQuestions,
 } from "@/lib/eatable.functions";
 import { parseCSV } from "@/lib/csv";
 
@@ -15,7 +16,7 @@ function OwnerPage() {
   const [password, setPassword] = useState<string>(() =>
     typeof window === "undefined" ? "" : sessionStorage.getItem(PW_KEY) || "",
   );
-  const [tab, setTab] = useState<"settings" | "modes" | "questions">("settings");
+  const [tab, setTab] = useState<"settings" | "modes" | "questions" | "sample">("settings");
   const qc = useQueryClient();
 
   const verify = useMutation({
@@ -61,9 +62,9 @@ function OwnerPage() {
             className="text-sm text-muted-foreground underline"
           >Log out</button>
         </div>
-        <div className="mt-3 grid grid-cols-3 gap-2">
-          {(["settings", "modes", "questions"] as const).map((t) => (
-            <button key={t} onClick={() => setTab(t)} className={`rounded-full py-2 text-sm font-semibold capitalize ${tab === t ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}>
+        <div className="mt-3 grid grid-cols-4 gap-2">
+          {(["settings", "modes", "questions", "sample"] as const).map((t) => (
+            <button key={t} onClick={() => setTab(t)} className={`rounded-full py-2 text-xs font-semibold capitalize ${tab === t ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}>
               {t}
             </button>
           ))}
@@ -73,6 +74,7 @@ function OwnerPage() {
       <div className="px-5 pt-5">
         {tab === "settings" && <SettingsTab password={password} settings={owner.data.settings} onSaved={() => qc.invalidateQueries()} />}
         {tab === "modes" && <ModesTab password={password} modes={owner.data.modes} onChanged={() => qc.invalidateQueries()} />}
+        {tab === "sample" && <SampleTab password={password} />}
         {tab === "questions" && <QuestionsTab password={password} count={owner.data.questionCount} onDone={() => qc.invalidateQueries()} />}
       </div>
     </div>
@@ -395,5 +397,249 @@ function Field({ label, value, onChange, type = "text", placeholder }: { label: 
         className="w-full rounded-xl border-2 border-input bg-card px-4 py-3 outline-none focus:border-primary"
       />
     </label>
+  );
+}
+
+function SampleTab({ password }: { password: string }) {
+  const qc = useQueryClient();
+  const q = useQuery({
+    queryKey: ["sample-owner"],
+    queryFn: () => getSampleOwnerData({ data: { password } }),
+  });
+  const [editing, setEditing] = useState<any | null>(null);
+
+  if (q.isLoading || !q.data) return <div className="text-center text-muted-foreground">Loading…</div>;
+  const questions = q.data.questions ?? [];
+  const refresh = () => qc.invalidateQueries();
+
+  return (
+    <div className="space-y-5">
+      <SampleConfigCard password={password} config={q.data.config} onSaved={refresh} />
+
+      <div className="rounded-2xl bg-card border p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="font-bold">🧪 Sample Questions</div>
+          <div className="text-xs text-muted-foreground">{questions.length} total</div>
+        </div>
+        {questions.length === 0 && (
+          <div className="text-xs text-muted-foreground">No sample questions yet. Add one below.</div>
+        )}
+        {questions.map((sq: any) => (
+          <div key={sq.id} className="rounded-xl border p-3">
+            <div className="text-sm font-semibold">{sq.question_en}</div>
+            <div className="text-xs text-muted-foreground mt-1">
+              #{sq.sort_order} · {sq.difficulty} · Answer {sq.correct_answer} · {sq.active ? "Active" : "Off"}
+            </div>
+            <div className="mt-2 flex gap-2">
+              <button onClick={() => setEditing(sq)} className="flex-1 rounded-lg bg-secondary text-secondary-foreground py-2 text-xs font-semibold">Edit</button>
+              <button
+                onClick={async () => {
+                  if (!confirm("Delete this sample question?")) return;
+                  await deleteSampleQuestion({ data: { password, id: sq.id } });
+                  refresh();
+                }}
+                className="rounded-lg bg-destructive text-destructive-foreground px-3 py-2 text-xs font-semibold"
+              >Delete</button>
+            </div>
+          </div>
+        ))}
+        <button
+          onClick={() => setEditing({
+            question_code: "", subject: "", topic: "", difficulty: "Easy",
+            question_en: "", question_kn: "", 
+            option_a_en: "", option_a_kn: "", option_b_en: "", option_b_kn: "",
+            option_c_en: "", option_c_kn: "", option_d_en: "", option_d_kn: "",
+            correct_answer: "A", active: true, sort_order: questions.length + 1,
+          })}
+          className="w-full rounded-2xl border-2 border-dashed border-primary text-primary font-bold py-3"
+        >+ Add Sample Question</button>
+      </div>
+
+      <SampleCsvCard password={password} onDone={refresh} />
+
+      {editing && (
+        <SampleQuestionEditor
+          password={password}
+          initial={editing}
+          onClose={() => setEditing(null)}
+          onSaved={() => { setEditing(null); refresh(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+function SampleConfigCard({ password, config, onSaved }: { password: string; config: any; onSaved: () => void }) {
+  const [f, setF] = useState({
+    enabled: !!config?.enabled,
+    num_questions: Number(config?.num_questions ?? 3),
+    time_limit_seconds: Number(config?.time_limit_seconds ?? 60),
+    correct_to_win: Number(config?.correct_to_win ?? 2),
+    reward_text: config?.reward_text ?? "",
+    intro_text_en: config?.intro_text_en ?? "",
+    intro_text_kn: config?.intro_text_kn ?? "",
+  });
+  const save = useMutation({
+    mutationFn: () => saveSampleConfig({ data: { password, ...f } }),
+    onSuccess: () => { alert("Sample quiz settings saved."); onSaved(); },
+    onError: (e: any) => alert(e?.message || "Save failed"),
+  });
+  const num = (k: keyof typeof f, max: number) => (v: string) =>
+    setF({ ...f, [k]: Math.max(0, Math.min(max, Number(v) || 0)) });
+
+  return (
+    <div className="rounded-2xl bg-card border p-4 space-y-3">
+      <div className="font-bold text-lg">🧪 Sample Quiz Setup</div>
+      <div className="text-xs text-muted-foreground">
+        A short practice round first-time players can try before the real quiz. It never gives a real reward
+        and never uses up their retake wait time.
+      </div>
+      <label className="flex items-center gap-3 p-3 rounded-xl bg-secondary">
+        <input type="checkbox" checked={f.enabled} onChange={(e) => setF({ ...f, enabled: e.target.checked })} className="h-5 w-5" />
+        <span className="font-semibold text-sm">Show sample quiz to users</span>
+      </label>
+      <div className="grid grid-cols-2 gap-2">
+        <Field label="Questions Shown" type="number" value={String(f.num_questions)} onChange={num("num_questions", 50)} />
+        <Field label="Time Limit (sec)" type="number" value={String(f.time_limit_seconds)} onChange={num("time_limit_seconds", 3600)} />
+      </div>
+      <Field label="Correct Answers to Pass" type="number" value={String(f.correct_to_win)} onChange={num("correct_to_win", 50)} />
+      <Field label="Sample Reward Text" value={f.reward_text} onChange={(v) => setF({ ...f, reward_text: v })} placeholder="e.g. Practice round — no reward" />
+      <Field label="Intro Text (English)" value={f.intro_text_en} onChange={(v) => setF({ ...f, intro_text_en: v })} />
+      <Field label="Intro Text (ಕನ್ನಡ)" value={f.intro_text_kn} onChange={(v) => setF({ ...f, intro_text_kn: v })} />
+      <button onClick={() => save.mutate()} disabled={save.isPending} className="w-full rounded-2xl bg-primary text-primary-foreground font-bold py-4">
+        {save.isPending ? "Saving…" : "Save Sample Settings"}
+      </button>
+    </div>
+  );
+}
+
+function SampleQuestionEditor({ password, initial, onClose, onSaved }: any) {
+  const [f, setF] = useState<any>(initial);
+  const save = useMutation({
+    mutationFn: () => {
+      const { id, created_at, ...row } = f;
+      return upsertSampleQuestion({
+        data: {
+          password,
+          ...(initial.id ? { id: initial.id } : {}),
+          row: { ...row, correct_answer: String(row.correct_answer || "A").toUpperCase().slice(0, 1) },
+        },
+      });
+    },
+    onSuccess: onSaved,
+    onError: (e: any) => alert(e?.message || "Failed"),
+  });
+  const set = (k: string) => (v: string) => setF({ ...f, [k]: v });
+
+  return (
+    <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur overflow-y-auto p-5">
+      <div className="max-w-md mx-auto space-y-3 pb-10">
+        <div className="flex items-center justify-between">
+          <div className="text-lg font-black">{initial.id ? "Edit Sample Question" : "New Sample Question"}</div>
+          <button onClick={onClose} className="text-2xl">✕</button>
+        </div>
+        <Field label="Question (English)" value={f.question_en} onChange={set("question_en")} />
+        <Field label="Question (ಕನ್ನಡ)" value={f.question_kn ?? ""} onChange={set("question_kn")} />
+        {(["a", "b", "c", "d"] as const).map((L) => (
+          <div key={L} className="grid grid-cols-2 gap-2">
+            <Field label={`Option ${L.toUpperCase()} (EN)`} value={f[`option_${L}_en`] ?? ""} onChange={set(`option_${L}_en`)} />
+            <Field label={`Option ${L.toUpperCase()} (KN)`} value={f[`option_${L}_kn`] ?? ""} onChange={set(`option_${L}_kn`)} />
+          </div>
+        ))}
+        <div className="grid grid-cols-2 gap-2">
+          <label className="block">
+            <div className="text-sm font-semibold mb-1">Correct Answer</div>
+            <select
+              value={f.correct_answer}
+              onChange={(e) => setF({ ...f, correct_answer: e.target.value })}
+              className="w-full rounded-xl border-2 border-input bg-card px-4 py-3 outline-none focus:border-primary"
+            >
+              {["A", "B", "C", "D"].map((x) => <option key={x} value={x}>{x}</option>)}
+            </select>
+          </label>
+          <Field label="Difficulty" value={f.difficulty ?? "Easy"} onChange={set("difficulty")} />
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <Field label="Subject" value={f.subject ?? ""} onChange={set("subject")} />
+          <Field label="Order" type="number" value={String(f.sort_order ?? 0)} onChange={(v) => setF({ ...f, sort_order: Number(v) || 0 })} />
+        </div>
+        <label className="flex items-center gap-3 p-4 rounded-2xl bg-card border">
+          <input type="checkbox" checked={!!f.active} onChange={(e) => setF({ ...f, active: e.target.checked })} className="h-5 w-5" />
+          <span className="font-semibold">Active</span>
+        </label>
+        <button
+          onClick={() => save.mutate()}
+          disabled={save.isPending || !f.question_en || !f.option_a_en || !f.option_b_en || !f.option_c_en || !f.option_d_en}
+          className="w-full rounded-2xl bg-primary text-primary-foreground font-bold py-4 disabled:opacity-60"
+        >
+          {save.isPending ? "Saving…" : "Save Question"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function SampleCsvCard({ password, onDone }: { password: string; onDone: () => void }) {
+  const [mode, setMode] = useState<"replace" | "append">("replace");
+  const [file, setFile] = useState<File | null>(null);
+  const [error, setError] = useState("");
+  const fileRef = useRef<HTMLInputElement | null>(null);
+
+  const upload = useMutation({
+    mutationFn: async () => {
+      if (!file) throw new Error("Choose a CSV file");
+      const rows = parseCSV(await file.text());
+      if (rows.length < 2) throw new Error("CSV is empty");
+      const header = rows[0].map((h) => h.trim().toLowerCase());
+      const col = (n: string) => header.indexOf(n.toLowerCase());
+      for (const n of ["question_en", "option_a_en", "option_b_en", "option_c_en", "option_d_en", "correct_answer"]) {
+        if (col(n) < 0) throw new Error(`Missing column: ${n}`);
+      }
+      const items = rows.slice(1).map((r, i) => ({
+        question_code: col("question_id") >= 0 ? r[col("question_id")] : null,
+        subject: col("subject") >= 0 ? r[col("subject")] : null,
+        topic: col("topic") >= 0 ? r[col("topic")] : null,
+        difficulty: (col("difficulty") >= 0 ? r[col("difficulty")] : "Easy") || "Easy",
+        question_en: r[col("question_en")],
+        question_kn: col("question_kn") >= 0 ? r[col("question_kn")] : null,
+        option_a_en: r[col("option_a_en")], option_a_kn: col("option_a_kn") >= 0 ? r[col("option_a_kn")] : null,
+        option_b_en: r[col("option_b_en")], option_b_kn: col("option_b_kn") >= 0 ? r[col("option_b_kn")] : null,
+        option_c_en: r[col("option_c_en")], option_c_kn: col("option_c_kn") >= 0 ? r[col("option_c_kn")] : null,
+        option_d_en: r[col("option_d_en")], option_d_kn: col("option_d_kn") >= 0 ? r[col("option_d_kn")] : null,
+        correct_answer: (r[col("correct_answer")] || "").trim().toUpperCase().slice(0, 1),
+        active: true,
+        sort_order: i + 1,
+      })).filter((x) => x.question_en && ["A", "B", "C", "D"].includes(x.correct_answer));
+      if (items.length === 0) throw new Error("No valid rows found");
+      return uploadSampleQuestions({ data: { password, mode, rows: items } });
+    },
+    onSuccess: (res: any) => {
+      alert(`Uploaded ${res.inserted} sample questions.`);
+      setFile(null);
+      if (fileRef.current) fileRef.current.value = "";
+      onDone();
+    },
+    onError: (e: any) => setError(e?.message || "Upload failed"),
+  });
+
+  return (
+    <div className="rounded-2xl bg-card border p-4 space-y-3">
+      <div className="font-bold">Upload Sample Questions (CSV)</div>
+      <div className="text-xs text-muted-foreground">
+        Same columns as the main question bank: Question_EN, Question_KN, Option_A_EN … Option_D_KN, Correct_Answer, Difficulty.
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        {(["replace", "append"] as const).map((m) => (
+          <button key={m} onClick={() => setMode(m)} className={`rounded-xl py-2 text-sm font-semibold ${mode === m ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}>
+            {m === "replace" ? "Replace all" : "Append"}
+          </button>
+        ))}
+      </div>
+      <input ref={fileRef} type="file" accept=".csv,text/csv" onChange={(e) => { setError(""); setFile(e.target.files?.[0] ?? null); }} className="block w-full text-sm" />
+      {error && <div className="text-sm text-destructive">{error}</div>}
+      <button onClick={() => upload.mutate()} disabled={!file || upload.isPending} className="w-full rounded-2xl bg-primary text-primary-foreground font-bold py-4 disabled:opacity-60">
+        {upload.isPending ? "Uploading…" : "Upload"}
+      </button>
+    </div>
   );
 }
