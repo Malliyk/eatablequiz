@@ -406,68 +406,26 @@ function SampleTab({ password }: { password: string }) {
     queryKey: ["sample-owner"],
     queryFn: () => getSampleOwnerData({ data: { password } }),
   });
-  const [editing, setEditing] = useState<any | null>(null);
 
   if (q.isLoading || !q.data) return <div className="text-center text-muted-foreground">Loading…</div>;
-  const questions = q.data.questions ?? [];
   const refresh = () => qc.invalidateQueries();
 
   return (
     <div className="space-y-5">
       <SampleConfigCard password={password} config={q.data.config} onSaved={refresh} />
 
-      <div className="rounded-2xl bg-card border p-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="font-bold">🧪 Sample Questions</div>
-          <div className="text-xs text-muted-foreground">{questions.length} total</div>
+      <div className="rounded-2xl bg-card border p-4 space-y-2">
+        <div className="font-bold">🧪 Sample Questions</div>
+        <div className="text-xs text-muted-foreground">
+          The practice round now picks its questions at random from your main question bank
+          (the same CSV you upload in the Questions tab). Nothing extra to add here — just set
+          how many questions, the time limit and the pass mark above.
         </div>
-        {questions.length === 0 && (
-          <div className="text-xs text-muted-foreground">No sample questions yet. Add one below.</div>
-        )}
-        {questions.map((sq: any) => (
-          <div key={sq.id} className="rounded-xl border p-3">
-            <div className="text-sm font-semibold">{sq.question_en}</div>
-            <div className="text-xs text-muted-foreground mt-1">
-              #{sq.sort_order} · {sq.difficulty} · Answer {sq.correct_answer} · {sq.active ? "Active" : "Off"}
-            </div>
-            <div className="mt-2 flex gap-2">
-              <button onClick={() => setEditing(sq)} className="flex-1 rounded-lg bg-secondary text-secondary-foreground py-2 text-xs font-semibold">Edit</button>
-              <button
-                onClick={async () => {
-                  if (!confirm("Delete this sample question?")) return;
-                  await deleteSampleQuestion({ data: { password, id: sq.id } });
-                  refresh();
-                }}
-                className="rounded-lg bg-destructive text-destructive-foreground px-3 py-2 text-xs font-semibold"
-              >Delete</button>
-            </div>
-          </div>
-        ))}
-        <button
-          onClick={() => setEditing({
-            question_code: "", subject: "", topic: "", difficulty: "Easy",
-            question_en: "", question_kn: "", 
-            option_a_en: "", option_a_kn: "", option_b_en: "", option_b_kn: "",
-            option_c_en: "", option_c_kn: "", option_d_en: "", option_d_kn: "",
-            correct_answer: "A", active: true, sort_order: questions.length + 1,
-          })}
-          className="w-full rounded-2xl border-2 border-dashed border-primary text-primary font-bold py-3"
-        >+ Add Sample Question</button>
       </div>
-
-      <SampleCsvCard password={password} onDone={refresh} />
-
-      {editing && (
-        <SampleQuestionEditor
-          password={password}
-          initial={editing}
-          onClose={() => setEditing(null)}
-          onSaved={() => { setEditing(null); refresh(); }}
-        />
-      )}
     </div>
   );
 }
+
 
 function SampleConfigCard({ password, config, onSaved }: { password: string; config: any; onSaved: () => void }) {
   const [f, setF] = useState({

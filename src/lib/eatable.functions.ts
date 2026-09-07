@@ -283,11 +283,20 @@ export const uploadQuestions = createServerFn({ method: "POST" })
 
 const SAMPLE_PUBLIC_COLUMNS = PUBLIC_QUESTION_COLUMNS;
 
+function shuffle<T>(arr: T[]): T[] {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 export const getSampleInfo = createServerFn({ method: "GET" }).handler(async () => {
   const supa = await admin();
   const [{ data: config }, { count }] = await Promise.all([
     supa.from("sample_config").select("*").eq("id", 1).maybeSingle(),
-    supa.from("sample_questions").select("*", { count: "exact", head: true }).eq("active", true),
+    supa.from("questions").select("*", { count: "exact", head: true }).eq("active", true),
   ]);
   return { config, availableQuestions: count ?? 0 };
 });
@@ -296,13 +305,14 @@ export const startSampleQuiz = createServerFn({ method: "POST" }).handler(async 
   const supa = await admin();
   const { data: config } = await supa.from("sample_config").select("*").eq("id", 1).maybeSingle();
   if (!config || !config.enabled) throw new Error("Sample quiz is not available");
+  // Sample questions come from the same question bank as the real quiz.
   const { data: rows } = await supa
-    .from("sample_questions")
+    .from("questions")
     .select(SAMPLE_PUBLIC_COLUMNS)
     .eq("active", true)
-    .order("sort_order");
-  const questions = (rows ?? []).slice(0, config.num_questions);
-  if (questions.length === 0) throw new Error("No sample questions configured yet");
+    .limit(500);
+  const questions = shuffle(rows ?? []).slice(0, config.num_questions);
+  if (questions.length === 0) throw new Error("No questions configured yet");
   return {
     mode: {
       id: "sample",
@@ -334,9 +344,10 @@ export const submitSampleQuiz = createServerFn({ method: "POST" })
     const supa = await admin();
     const { data: config } = await supa.from("sample_config").select("*").eq("id", 1).maybeSingle();
     const { data: rows } = await supa
-      .from("sample_questions")
+      .from("questions")
       .select("id,correct_answer")
       .in("id", data.answers.map((a) => a.id));
+
     const keyById = new Map((rows ?? []).map((r) => [r.id, r.correct_answer]));
     let correct = 0;
     const results = data.answers.map((a) => {
