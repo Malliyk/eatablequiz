@@ -30,12 +30,35 @@ export type QuizSession = {
   lang: QuizLang;
   mode: PlayerMode;
   questions: QuizQuestion[];
-  answers: (string | null)[]; // 'A'|'B'|'C'|'D'|null
+  answers: (string | null)[]; // displayed 'A'|'B'|'C'|'D'|null
+  // Per question: optionOrders[i][displayPos] = original option index (0=A..3=D).
+  // Options are shuffled per question on the device so the correct answer is
+  // not always option A. Answers are mapped back to original letters before
+  // server-side grading. Missing/identity order means "no shuffle".
+  optionOrders?: number[][];
   startedAt: number;
   isSample?: boolean;
   submittedAt?: number;
   result?: QuizResult;
 };
+
+export const LETTERS = ["A", "B", "C", "D"] as const;
+
+// One shuffled [0..3] order per question.
+export function shuffleOptionOrders(questionCount: number): number[][] {
+  return Array.from({ length: questionCount }, () => {
+    const order = [0, 1, 2, 3];
+    for (let i = order.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+    return order;
+  });
+}
+
+export function optionOrderFor(session: QuizSession, index: number): number[] {
+  return session.optionOrders?.[index] ?? [0, 1, 2, 3];
+}
 
 
 const KEY = "eatable-session";
