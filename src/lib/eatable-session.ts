@@ -44,6 +44,10 @@ export type QuizSession = {
 
 export const LETTERS = ["A", "B", "C", "D"] as const;
 
+export function cleanOptionText(value: string | null): string {
+  return (value ?? "").replace(/_+/g, " ").replace(/\s+/g, " ").trim();
+}
+
 // One shuffled [0..3] order per question.
 export function shuffleOptionOrders(questionCount: number): number[][] {
   return Array.from({ length: questionCount }, () => {

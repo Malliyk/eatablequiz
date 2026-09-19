@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { LETTERS, loadSession, optionOrderFor } from "@/lib/eatable-session";
+import { cleanOptionText, LETTERS, loadSession, optionOrderFor } from "@/lib/eatable-session";
 
 export const Route = createFileRoute("/review")({
   component: ReviewPage,
@@ -84,7 +84,7 @@ function ReviewPage() {
                   return (
                     <div key={letter} className={`rounded-xl border-2 px-3 py-2 flex items-center gap-2 ${border}`}>
                       <div className="h-7 w-7 rounded-full bg-secondary text-secondary-foreground text-xs font-bold flex items-center justify-center">{letter}</div>
-                      <div className="flex-1 text-sm">{text(en, knOpt)}</div>
+                      <div className="flex-1 text-sm">{cleanOptionText(text(en, knOpt))}</div>
                       {isCorrect && <span className="text-success font-black">✓</span>}
                       {wrongPick && <span className="text-destructive font-black">✕</span>}
                     </div>
