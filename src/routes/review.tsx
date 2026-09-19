@@ -92,9 +92,18 @@ function ReviewPage() {
                 })}
               </div>
               <div className="mt-3 text-xs text-muted-foreground">
-                {kn ? "ನಿಮ್ಮ ಉತ್ತರ" : "Your answer"}: <span className="font-bold">{chosen ?? (kn ? "—" : "—")}</span>
+                {kn ? "ನಿಮ್ಮ ಉತ್ತರ" : "Your answer"}: <span className="font-bold">{chosen ?? "—"}</span>
                 {"  ·  "}
-                {kn ? "ಸರಿಯಾದ ಉತ್ತರ" : "Correct answer"}: <span className="font-bold">{correctAnswer ?? "—"}</span>
+                {kn ? "ಸರಿಯಾದ ಉತ್ತರ" : "Correct answer"}:{" "}
+                <span className="font-bold">
+                  {(() => {
+                    // Show the correct answer's displayed letter (options were shuffled).
+                    if (!correctAnswer) return "—";
+                    const perm = optionOrderFor(session, i);
+                    const pos = perm.findIndex((origIdx) => LETTERS[origIdx] === correctAnswer);
+                    return pos >= 0 ? LETTERS[pos] : "—";
+                  })()}
+                </span>
               </div>
             </div>
           );
