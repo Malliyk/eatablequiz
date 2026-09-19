@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { getSampleInfo, startSampleQuiz } from "@/lib/eatable.functions";
-import { loadLang, loadTeam, saveSession } from "@/lib/eatable-session";
+import { loadLang, loadTeam, saveSession, shuffleOptionOrders } from "@/lib/eatable-session";
 
 export const Route = createFileRoute("/sample")({
   component: SamplePage,
@@ -33,6 +33,7 @@ function SamplePage() {
         mode: res.mode,
         questions: res.questions,
         answers: new Array(res.questions.length).fill(null),
+        optionOrders: shuffleOptionOrders(res.questions.length),
         startedAt: Date.now(),
         isSample: true,
       });
