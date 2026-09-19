@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { getPublicConfig, getQuizQuestions } from "@/lib/eatable.functions";
-import { loadLang, loadTeam, saveSession } from "@/lib/eatable-session";
+import { loadLang, loadTeam, saveSession, shuffleOptionOrders } from "@/lib/eatable-session";
 import { useState } from "react";
 
 export const Route = createFileRoute("/instructions/$modeId")({
@@ -37,6 +37,7 @@ function InstructionsPage() {
         mode: res.mode,
         questions: res.questions,
         answers: new Array(res.questions.length).fill(null),
+        optionOrders: shuffleOptionOrders(res.questions.length),
         startedAt: Date.now(),
       });
       nav({ to: "/quiz" });

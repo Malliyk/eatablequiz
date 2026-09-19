@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { loadSession } from "@/lib/eatable-session";
+import { LETTERS, loadSession, optionOrderFor } from "@/lib/eatable-session";
 
 export const Route = createFileRoute("/review")({
   component: ReviewPage,
@@ -65,10 +65,15 @@ function ReviewPage() {
               </div>
               <div className="mt-1 font-semibold">{text(q.question_en, q.question_kn)}</div>
               <div className="mt-3 space-y-2">
-                {(["A", "B", "C", "D"] as const).map((letter) => {
-                  const en = (q as any)[`option_${letter.toLowerCase()}_en`];
-                  const knOpt = (q as any)[`option_${letter.toLowerCase()}_kn`];
-                  const isCorrect = correctAnswer === letter;
+                {LETTERS.map((letter, displayPos) => {
+                  // Options were shown shuffled: this display position holds the
+                  // original option at perm[displayPos]. The server's correct
+                  // answer uses original letters, so compare against that.
+                  const perm = optionOrderFor(session, i);
+                  const origLetter = LETTERS[perm[displayPos]];
+                  const en = (q as any)[`option_${origLetter.toLowerCase()}_en`];
+                  const knOpt = (q as any)[`option_${origLetter.toLowerCase()}_kn`];
+                  const isCorrect = correctAnswer === origLetter;
                   const isChosen = chosen === letter;
                   const wrongPick = isChosen && !isCorrect;
                   const border = isCorrect
@@ -87,9 +92,18 @@ function ReviewPage() {
                 })}
               </div>
               <div className="mt-3 text-xs text-muted-foreground">
-                {kn ? "ನಿಮ್ಮ ಉತ್ತರ" : "Your answer"}: <span className="font-bold">{chosen ?? (kn ? "—" : "—")}</span>
+                {kn ? "ನಿಮ್ಮ ಉತ್ತರ" : "Your answer"}: <span className="font-bold">{chosen ?? "—"}</span>
                 {"  ·  "}
-                {kn ? "ಸರಿಯಾದ ಉತ್ತರ" : "Correct answer"}: <span className="font-bold">{correctAnswer ?? "—"}</span>
+                {kn ? "ಸರಿಯಾದ ಉತ್ತರ" : "Correct answer"}:{" "}
+                <span className="font-bold">
+                  {(() => {
+                    // Show the correct answer's displayed letter (options were shuffled).
+                    if (!correctAnswer) return "—";
+                    const perm = optionOrderFor(session, i);
+                    const pos = perm.findIndex((origIdx) => LETTERS[origIdx] === correctAnswer);
+                    return pos >= 0 ? LETTERS[pos] : "—";
+                  })()}
+                </span>
               </div>
             </div>
           );

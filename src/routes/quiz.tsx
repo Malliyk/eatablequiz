@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { loadSession, markPlayed, saveSession } from "@/lib/eatable-session";
+import { LETTERS, loadSession, markPlayed, optionOrderFor, saveSession } from "@/lib/eatable-session";
 import { submitQuiz, submitSampleQuiz } from "@/lib/eatable.functions";
 
 
@@ -65,10 +65,18 @@ function QuizPage() {
     const finished = { ...s, submittedAt: Date.now() };
     try {
       // Grading happens on the server; the device never holds the answer key.
-      const answers = s.questions.map((q, i) => ({
-        id: q.id,
-        answer: (s.answers[i] as "A" | "B" | "C" | "D" | null) ?? null,
-      }));
+      // Options were shown shuffled, so translate the displayed letter back to
+      // the original option letter before submitting.
+      const answers = s.questions.map((q, i) => {
+        const displayed = s.answers[i];
+        let original: "A" | "B" | "C" | "D" | null = null;
+        if (displayed) {
+          const perm = optionOrderFor(s, i);
+          const displayPos = LETTERS.indexOf(displayed as (typeof LETTERS)[number]);
+          if (displayPos >= 0) original = LETTERS[perm[displayPos]];
+        }
+        return { id: q.id, answer: original };
+      });
       const result = s.isSample
         ? await submitSampleQuiz({ data: { answers } })
         : await submitQuiz({ data: { modeId: s.mode.id, answers } });
@@ -106,9 +114,12 @@ function QuizPage() {
       </div>
 
       <div className="mt-4 space-y-3">
-        {(["A", "B", "C", "D"] as const).map((letter) => {
-          const en = (q as any)[`option_${letter.toLowerCase()}_en`];
-          const knOpt = (q as any)[`option_${letter.toLowerCase()}_kn`];
+        {LETTERS.map((letter, displayPos) => {
+          // Shuffled: display position shows the original option at perm[displayPos].
+          const origIdx = optionOrderFor(session, index)[displayPos];
+          const origLetter = LETTERS[origIdx].toLowerCase();
+          const en = (q as any)[`option_${origLetter}_en`];
+          const knOpt = (q as any)[`option_${origLetter}_kn`];
           return (
             <button
               key={letter}
