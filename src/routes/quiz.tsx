@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { LETTERS, loadSession, markPlayed, optionOrderFor, saveSession } from "@/lib/eatable-session";
+import { cleanOptionText, LETTERS, loadSession, markPlayed, optionOrderFor, saveSession } from "@/lib/eatable-session";
 import { submitQuiz, submitSampleQuiz } from "@/lib/eatable.functions";
 
 
@@ -128,7 +128,7 @@ function QuizPage() {
             >
               <div className="flex gap-3">
                 <div className="h-9 w-9 shrink-0 rounded-full bg-secondary text-secondary-foreground font-bold flex items-center justify-center">{letter}</div>
-                <div className="font-semibold">{text(en, knOpt)}</div>
+                <div className="font-semibold">{cleanOptionText(text(en, knOpt))}</div>
               </div>
             </button>
           );
